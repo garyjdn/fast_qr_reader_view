@@ -344,6 +344,7 @@ class QRReaderController extends ValueNotifier<QRReaderValue> {
       var maxZoom = reply['maxZoom'] ?? 0;
       value = value.copyWith(
         isInitialized: true,
+        maxZoom: maxZoom,
         previewSize: new Size(
           reply['previewWidth'].toDouble(),
           reply['previewHeight'].toDouble(),
