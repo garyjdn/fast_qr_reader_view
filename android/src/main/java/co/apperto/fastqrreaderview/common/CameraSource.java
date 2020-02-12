@@ -151,6 +151,16 @@ public class CameraSource {
     }
   }
 
+  public int getMaxZoom() {
+    return camera.getParameters().getMaxZoom();
+  }
+
+  public void setZoom(int zoom) {
+    Parameters params = camera.getParameters();
+    params.setZoom(zoom);
+    camera.setParameters(params);
+  }
+
   /**
    * Opens the camera and starts sending preview frames to the underlying detector. The preview
    * frames are not displayed.
@@ -169,8 +179,6 @@ public class CameraSource {
     camera.setPreviewTexture(dummySurfaceTexture);
     usingSurfaceTexture = true;
     camera.startPreview();
-
-
 
     processingThread = new Thread(processingRunnable);
     processingRunnable.setActive(true);

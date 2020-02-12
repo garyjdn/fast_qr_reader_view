@@ -3,13 +3,28 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-final MethodChannel _channel = const MethodChannel('fast_qr_reader_view')..invokeMethod('init');
+final MethodChannel _channel = const MethodChannel('fast_qr_reader_view')
+  ..invokeMethod('init');
 
 enum CameraLensDirection { front, back, external }
 
 enum ResolutionPreset { low, medium, high }
 
-enum CodeFormat { codabar, code39, code93, code128, ean8, ean13, itf, upca, upce, aztec, datamatrix, pdf417, qr }
+enum CodeFormat {
+  codabar,
+  code39,
+  code93,
+  code128,
+  ean8,
+  ean13,
+  itf,
+  upca,
+  upce,
+  aztec,
+  datamatrix,
+  pdf417,
+  qr
+}
 
 var _availableFormats = {
   CodeFormat.codabar: 'codabar', // Android only
@@ -70,7 +85,8 @@ CameraLensDirection _parseCameraLensDirection(String string) {
 /// May throw a [QRReaderException].
 Future<List<CameraDescription>> availableCameras() async {
   try {
-    final List<dynamic> cameras = await _channel.invokeMethod('availableCameras');
+    final List<dynamic> cameras =
+        await _channel.invokeMethod('availableCameras');
     return cameras.map((dynamic camera) {
       return new CameraDescription(
         name: camera['name'],
@@ -177,7 +193,9 @@ class CameraDescription {
 
   @override
   bool operator ==(Object o) {
-    return o is CameraDescription && o.name == name && o.lensDirection == lensDirection;
+    return o is CameraDescription &&
+        o.name == name &&
+        o.lensDirection == lensDirection;
   }
 
   @override
@@ -210,7 +228,9 @@ class QRReaderPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return controller.value.isInitialized ? new Texture(textureId: controller._textureId) : new Container();
+    return controller.value.isInitialized
+        ? new Texture(textureId: controller._textureId)
+        : new Container();
   }
 }
 
@@ -229,11 +249,15 @@ class QRReaderValue {
   /// Is `null` until  [isInitialized] is `true`.
   final Size previewSize;
 
+  /// The greatest zoom level supported by the hardware.
+  final int maxZoom;
+
   const QRReaderValue({
     this.isInitialized,
     this.errorDescription,
     this.previewSize,
     this.isScanning,
+    this.maxZoom,
   });
 
   const QRReaderValue.uninitialized()
@@ -254,12 +278,14 @@ class QRReaderValue {
     bool isScanning,
     String errorDescription,
     Size previewSize,
+    int maxZoom,
   }) {
     return new QRReaderValue(
       isInitialized: isInitialized ?? this.isInitialized,
       errorDescription: errorDescription,
       previewSize: previewSize ?? this.previewSize,
       isScanning: isScanning ?? this.isScanning,
+      maxZoom: maxZoom ?? this.maxZoom,
     );
   }
 
@@ -269,7 +295,8 @@ class QRReaderValue {
         'isScanning: $isScanning, '
         'isInitialized: $isInitialized, '
         'errorDescription: $errorDescription, '
-        'previewSize: $previewSize)';
+        'previewSize: $previewSize, '
+        'maxZoom: $maxZoom)';
   }
 }
 
@@ -291,7 +318,8 @@ class QRReaderController extends ValueNotifier<QRReaderValue> {
   StreamSubscription<dynamic> _eventSubscription;
   Completer<Null> _creatingCompleter;
 
-  QRReaderController(this.description, this.resolutionPreset, this.codeFormats, this.onCodeRead)
+  QRReaderController(this.description, this.resolutionPreset, this.codeFormats,
+      this.onCodeRead)
       : super(const QRReaderValue.uninitialized());
 
   /// Initializes the camera on the device.
@@ -313,6 +341,7 @@ class QRReaderController extends ValueNotifier<QRReaderValue> {
         },
       );
       _textureId = reply['textureId'];
+      var maxZoom = reply['maxZoom'] ?? 0;
       value = value.copyWith(
         isInitialized: true,
         previewSize: new Size(
@@ -324,7 +353,9 @@ class QRReaderController extends ValueNotifier<QRReaderValue> {
       throw new QRReaderException(e.code, e.message);
     }
     _eventSubscription =
-        new EventChannel('fast_qr_reader_view/cameraEvents$_textureId').receiveBroadcastStream().listen(_listener);
+        new EventChannel('fast_qr_reader_view/cameraEvents$_textureId')
+            .receiveBroadcastStream()
+            .listen(_listener);
     _creatingCompleter.complete(null);
     return _creatingCompleter.future;
   }
@@ -351,7 +382,7 @@ class QRReaderController extends ValueNotifier<QRReaderValue> {
   /// Toggle flashlight
   Future<Null> toggleFlash() async {
     try {
-      value = value.copyWith(isScanning: false);
+      value = value.copyWith(isScanning: true);
       await _channel.invokeMethod(
         'toggleFlash',
         <String, dynamic>{'textureId': _textureId},
@@ -407,6 +438,24 @@ class QRReaderController extends ValueNotifier<QRReaderValue> {
       await _channel.invokeMethod(
         'stopScanning',
         <String, dynamic>{'textureId': _textureId},
+      );
+    } on PlatformException catch (e) {
+      throw new QRReaderException(e.code, e.message);
+    }
+  }
+
+  /// Set the camera zoom level, if supported.
+  Future<Null> setZoom(int zoom) async {
+    if (!value.isInitialized || _isDisposed) {
+      throw new QRReaderException(
+        'Uninitialized QRReaderController',
+        'setZoom was called on uninitialized QRReaderController',
+      );
+    }
+    try {
+      await _channel.invokeMethod(
+        'zoom',
+        <String, dynamic>{'value': zoom},
       );
     } on PlatformException catch (e) {
       throw new QRReaderException(e.code, e.message);

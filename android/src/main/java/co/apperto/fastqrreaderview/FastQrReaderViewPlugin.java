@@ -294,6 +294,14 @@ public class FastQrReaderViewPlugin implements MethodCallHandler, PluginRegistry
             case "toggleFlash":
                 toggleFlash(result);
                 break;
+            case "zoom": {
+                int zoomValue = call.argument("value");
+                if (camera != null) {
+                    camera.setZoom(zoomValue);
+                }
+                break;
+            }
+
             case "dispose": {
                 if (camera != null) {
                     camera.dispose();
@@ -679,6 +687,7 @@ public class FastQrReaderViewPlugin implements MethodCallHandler, PluginRegistry
                 reply.put("textureId", textureEntry.id());
                 reply.put("previewWidth", cameraSource.getPreviewSize().getWidth());
                 reply.put("previewHeight", cameraSource.getPreviewSize().getHeight());
+                reply.put("maxZoom", cameraSource.getMaxZoom());
                 result.success(reply);
 
 
@@ -757,6 +766,10 @@ public class FastQrReaderViewPlugin implements MethodCallHandler, PluginRegistry
 //                    if (result != null) result.error("cameraAccess", e.getMessage(), null);
 //                }
             }
+        }
+
+        public void setZoom(int zoom) {
+            cameraSource.setZoom(zoom);
         }
 
         //
